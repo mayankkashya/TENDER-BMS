@@ -299,8 +299,8 @@ button.secondary:hover{border-color:var(--ink);}
     <h2>1. Upload the tender</h2>
     <div class="sub">One upload feeds all four tools below.</div>
     <label class="upload-zone" id="uploadZone">
-      <input type="file" id="tenderFile" accept="application/pdf" onchange="handleUpload(event)">
-      <div id="uploadLabel">Tap to upload tender PDF</div>
+      <input type="file" id="tenderFile" accept="application/pdf" multiple onchange="handleUpload(event)">
+      <div id="uploadLabel">Tap to upload tender PDF(s) — ATC, BOQ, bid file etc.</div>
     </label>
   </div>
   <div class="card">
@@ -348,8 +348,8 @@ button.secondary:hover{border-color:var(--ink);}
 </div>
 
 <script>
-let tenderBase64 = null;
-let tenderFileName = "";
+let tenderBase64List = [];
+let tenderFileNames = [];
 let cachedSummary = null;
 
 // ---------- tabs ----------
@@ -448,18 +448,27 @@ t1/t2/t3 are annual turnover for the three most recent financial years found, ol
 
 // ---------- upload ----------
 function handleUpload(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  tenderFileName = file.name;
-  const reader = new FileReader();
-  reader.onload = () => {
-    tenderBase64 = reader.result.split(',')[1];
-    document.getElementById('uploadLabel').textContent = '✓ ' + file.name;
-    document.getElementById('uploadZone').classList.add('has-file');
-    ['btnSummary','btnGoNoGo','btnAnnexure','btnResponse'].forEach(id=>document.getElementById(id).disabled = false);
-    cachedSummary = null;
-  };
-  reader.readAsDataURL(file);
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  tenderBase64List = [];
+  tenderFileNames = [];
+  let loaded = 0;
+  document.getElementById('uploadLabel').textContent = 'Reading ' + files.length + ' file(s)…';
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      tenderBase64List.push(reader.result.split(',')[1]);
+      tenderFileNames.push(file.name);
+      loaded++;
+      if(loaded === files.length){
+        document.getElementById('uploadLabel').textContent = '✓ ' + tenderFileNames.join(', ');
+        document.getElementById('uploadZone').classList.add('has-file');
+        ['btnSummary','btnGoNoGo','btnAnnexure','btnResponse'].forEach(id=>document.getElementById(id).disabled = false);
+        cachedSummary = null;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ---------- Gemini call ----------
@@ -470,22 +479,36 @@ async function callGemini(promptParts, jsonMode){
     contents: [{ parts: promptParts }],
     generationConfig: jsonMode ? { responseMimeType: "application/json" } : {}
   };
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  if(!res.ok){
-    const errText = await res.text();
-    throw new Error('Gemini API error: ' + errText.slice(0,300));
+  const maxAttempts = 3;
+  let lastErr;
+  for(let attempt = 1; attempt <= maxAttempts; attempt++){
+    try{
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      if(!res.ok){
+        const errText = await res.text();
+        if((res.status === 503 || res.status === 429) && attempt < maxAttempts){
+          await new Promise(r=>setTimeout(r, attempt * 2000));
+          continue;
+        }
+        throw new Error('Gemini API error: ' + errText.slice(0,300));
+      }
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || '';
+      if(!text) throw new Error('Empty response from Gemini.');
+      return text;
+    }catch(err){
+      lastErr = err;
+      if(attempt === maxAttempts) throw err;
+    }
   }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || '';
-  if(!text) throw new Error('Empty response from Gemini.');
-  return text;
+  throw lastErr;
 }
-function tenderFilePart(){
-  return { inline_data: { mime_type: 'application/pdf', data: tenderBase64 } };
+function tenderFileParts(){
+  return tenderBase64List.map(b64 => ({ inline_data: { mime_type: 'application/pdf', data: b64 } }));
 }
 function setLoading(id, on, msg){
   document.getElementById(id).innerHTML = on ? `<div class="loader"><span class="dot"></span><span class="dot"></span><span class="dot"></span>${msg||'Working…'}</div>` : '';
@@ -500,11 +523,11 @@ function safeJson(text){
 
 // ---------- 1. Summary ----------
 async function runSummary(){
-  if(!tenderBase64) return;
+  if(!tenderBase64List.length) return;
   setLoading('summaryLoader', true, 'Reading tender document…');
   document.getElementById('summaryResult').innerHTML = '';
   try{
-    const prompt = `You are analysing a government tender document for a kitchen equipment supply company. Extract the following as JSON only, no markdown fences:
+    const prompt = `You are analysing a government tender — the attached PDF(s) together may include the ATC, BOQ, and bid document as separate files for a kitchen equipment supply company. Extract the following as JSON only, no markdown fences:
 {
  "tenderNo": "", "issuingAuthority": "", "tenderTitle": "",
  "tenderValue": "", "emdAmount": "", "submissionDeadline": "", "bidOpeningDate": "",
@@ -513,7 +536,7 @@ async function runSummary(){
  "documentsRequired": ["bullet points"]
 }
 If a field is not found, use "Not specified".`;
-    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const text = await callGemini([{text:prompt}, ...tenderFileParts()], true);
     const j = safeJson(text);
     cachedSummary = j;
     renderSummary(j);
@@ -538,7 +561,7 @@ function renderSummary(j){
 
 // ---------- 2. Go/No-Go ----------
 async function runGoNoGo(){
-  if(!tenderBase64) return;
+  if(!tenderBase64List.length) return;
   setLoading('gonogoLoader', true, 'Checking eligibility against your profile…');
   document.getElementById('gonogoResult').innerHTML = '';
   try{
@@ -553,7 +576,7 @@ Read the attached tender document. For each eligibility criterion in it, decide 
  "overallReason": "2-3 sentence summary"
 }
 Use "unclear" only when the profile genuinely lacks the information needed to judge.`;
-    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const text = await callGemini([{text:prompt}, ...tenderFileParts()], true);
     const j = safeJson(text);
     renderGoNoGo(j);
   }catch(err){ showError('gonogoResult', err); }
@@ -573,7 +596,7 @@ function renderGoNoGo(j){
 
 // ---------- 3. Annexure Auto-Fill ----------
 async function runAnnexure(){
-  if(!tenderBase64) return;
+  if(!tenderBase64List.length) return;
   setLoading('annexureLoader', true, 'Extracting annexures and filling from your profile…');
   document.getElementById('annexureResult').innerHTML = '';
   try{
@@ -582,7 +605,7 @@ ${profileAsText()}
 
 Read the attached tender document, find every annexure/form/undertaking it asks bidders to submit (e.g. Technical Compliance, OEM Authorization, Non-Blacklisting Undertaking, Financial Standing, Acceptance of T&C, Address Proof, etc.). For each one, draft the completed text using the company profile data, following the format/fields the tender specifies as closely as possible. Respond as JSON only, no markdown fences:
 { "annexures": [{"title":"", "filledText":"full drafted text of the annexure, ready to place on letterhead"}] }`;
-    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const text = await callGemini([{text:prompt}, ...tenderFileParts()], true);
     const j = safeJson(text);
     renderAnnexure(j);
   }catch(err){ showError('annexureResult', err); }
@@ -605,7 +628,7 @@ function renderAnnexure(j){
 
 // ---------- 4. Response Generation ----------
 async function runResponse(){
-  if(!tenderBase64) return;
+  if(!tenderBase64List.length) return;
   setLoading('responseLoader', true, 'Drafting the bid response…');
   document.getElementById('responseResult').innerHTML = '';
   try{
@@ -614,7 +637,7 @@ ${profileAsText()}
 
 Read the attached tender document. Write a complete, submission-ready bid response covering: covering letter, company introduction matched to the scope of work, point-by-point technical compliance against the eligibility/technical requirements, relevant past performance, and a closing statement of commitment to delivery terms. Write it in formal Indian government-tender bid language. Respond as JSON only, no markdown fences:
 { "response": "full response text" }`;
-    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const text = await callGemini([{text:prompt}, ...tenderFileParts()], true);
     const j = safeJson(text);
     document.getElementById('responseResult').innerHTML = `
       <div class="doc-block"><pre id="resp_0">${j.response}</pre>
