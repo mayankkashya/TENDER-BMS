@@ -633,11 +633,13 @@ async function runAnnexure(){
   setLoading('annexureLoader', true, 'Extracting annexures and filling from your profile…');
   document.getElementById('annexureResult').innerHTML = '';
   try{
-    const prompt = `You are preparing bid annexures for a kitchen equipment supply company. Company profile:
+    const prompt = `You are preparing bid annexures for a kitchen equipment supply company for a CPPP/CPWD/GeM government tender. Company profile:
 ${profileAsText()}
 
-Read the attached tender document, find every annexure/form/undertaking it asks bidders to submit (e.g. Technical Compliance, OEM Authorization, Non-Blacklisting Undertaking, Financial Standing, Acceptance of T&C, Address Proof, etc.). For each one, draft the completed text using the company profile data, following the format/fields the tender specifies as closely as possible. Respond as JSON only, no markdown fences:
-{ "annexures": [{"title":"", "filledText":"full drafted text of the annexure, ready to place on letterhead"}] }`;
+CRITICAL RULE: Government tender formats CANNOT be altered in any way — restructuring, rewording, re-numbering, or reordering a mandated annexure format is grounds for bid rejection. Your job is NOT to draft fresh text. It is to reproduce each annexure's exact format — every heading, numbered clause, field label, sentence structure and layout, in the exact order it appears in the tender document — and only fill in the blank/underscored/bracketed fields with the company's data. Where the source text is a fixed declaration/undertaking sentence, copy it verbatim except for the blanks. Some source pages may be scanned or photographed and slightly unclear — read carefully and transcribe the format precisely rather than guessing or simplifying it; if a specific word is genuinely illegible, keep it as [illegible] rather than inventing wording.
+
+Read the attached tender document, find every annexure/form/undertaking/format it asks bidders to submit (e.g. Technical Compliance, OEM Authorization, Non-Blacklisting Undertaking, Financial Standing, Acceptance of T&C, Address Proof, Experience on Similar Works, etc.). Respond as JSON only, no markdown fences:
+{ "annexures": [{"title":"", "filledText":"the annexure reproduced in its exact original format and wording, with only the blank fields filled in from the company profile, ready to place on letterhead"}] }`;
     const text = await callGemini([{text:prompt}, ...tenderFileParts()], true);
     const j = safeJson(text);
     renderAnnexure(j);
