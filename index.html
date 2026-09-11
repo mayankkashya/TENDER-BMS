@@ -202,9 +202,42 @@ button.secondary:hover{border-color:var(--ink);}
 .empty{color:var(--text-dim);font-size:0.88rem;padding:20px 0;}
 .error-box{background:var(--brick-soft);color:var(--brick);border:1px solid var(--brick);border-radius:var(--radius);padding:12px 14px;font-size:0.86rem;margin-top:12px;}
 .toolbar-end{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+
+body.locked .app{display:none;}
+#licenseGate{
+  display:none;
+  min-height:100vh;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+body.locked #licenseGate{display:flex;}
+.gate-card{
+  max-width:380px;
+  width:100%;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:30px 26px;
+  text-align:center;
+}
+.gate-card h1{font-size:1.5rem;margin:0 0 6px;}
+.gate-card .tagline{margin-bottom:22px;}
+.gate-card input{text-align:center;letter-spacing:0.03em;margin-bottom:12px;}
+.gate-card .hint{font-size:0.78rem;color:var(--text-dim);margin-top:14px;}
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="licenseGate">
+  <div class="gate-card">
+    <h1>Tender Desk</h1>
+    <div class="tagline" style="font-family:var(--serif);font-style:italic;color:var(--text-dim);">Enter your activation code</div>
+    <input type="text" id="licenseInput" placeholder="TD-XXXX-XXXXXX-XXXXX">
+    <button class="primary" style="width:100%;" onclick="activateLicense()">Activate</button>
+    <div id="licenseError"></div>
+    <div class="hint">Code expired or not working? Contact the person who set you up with Tender Desk for a new month's code.</div>
+  </div>
+</div>
 <div class="app">
 
 <header class="masthead">
@@ -661,9 +694,50 @@ function downloadBlock(id, name){
   a.click();
 }
 
+// ---------- license gate ----------
+const LICENSE_SECRET = "MYANK-TENDER-DESK-2026"; // must match license-generator.html
+function computeChecksum(custId, yyyymm){
+  const str = custId.toUpperCase() + '|' + yyyymm + '|' + LICENSE_SECRET;
+  let hash = 0;
+  for(let i=0;i<str.length;i++){ hash = (hash*31 + str.charCodeAt(i)) >>> 0; }
+  return (hash % 100000).toString().padStart(5,'0');
+}
+function validateLicenseCode(code){
+  const parts = (code||'').trim().toUpperCase().split('-');
+  if(parts.length !== 4 || parts[0] !== 'TD') return {ok:false, reason:'Code format looks wrong.'};
+  const [, custId, yyyymm, checksum] = parts;
+  if(!/^\d{6}$/.test(yyyymm)) return {ok:false, reason:'Code format looks wrong.'};
+  if(computeChecksum(custId, yyyymm) !== checksum) return {ok:false, reason:'Code is not valid.'};
+  const year = parseInt(yyyymm.slice(0,4),10), month = parseInt(yyyymm.slice(4,6),10);
+  const expiry = new Date(year, month, 0, 23,59,59); // last day of that month
+  if(new Date() > expiry) return {ok:false, reason:'This code has expired. Ask for this month\\'s code.'};
+  return {ok:true};
+}
+function activateLicense(){
+  const code = document.getElementById('licenseInput').value;
+  const result = validateLicenseCode(code);
+  const errBox = document.getElementById('licenseError');
+  if(result.ok){
+    localStorage.setItem('td_license', code.trim().toUpperCase());
+    errBox.innerHTML = '';
+    document.body.classList.remove('locked');
+  } else {
+    errBox.innerHTML = `<div class="error-box">${result.reason}</div>`;
+  }
+}
+function checkLicenseOnLoad(){
+  const saved = localStorage.getItem('td_license');
+  if(saved && validateLicenseCode(saved).ok){
+    document.body.classList.remove('locked');
+  } else {
+    document.body.classList.add('locked');
+  }
+}
+
 // ---------- init ----------
 loadProfile();
 refreshStatus();
+checkLicenseOnLoad();
 </script>
 </body>
 </html>
