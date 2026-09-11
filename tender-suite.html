@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tender Desk</title>
+<style>
+:root{
+  --ink:#1B2A4A;
+  --ink-soft:#3A4A6B;
+  --paper:#EDEAE2;
+  --paper-raised:#F7F5F0;
+  --line:#D8D3C6;
+  --brick:#A6392F;
+  --brick-soft:#F1E1DE;
+  --moss:#4C7A5E;
+  --moss-soft:#E2EBE4;
+  --amber:#9C7A28;
+  --amber-soft:#F2E9D2;
+  --text:#20242E;
+  --text-dim:#5B6270;
+  --radius:3px;
+  --serif:'Spectral',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@import url('https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:960px;margin:0 auto;padding:0 16px 64px;}
+
+header.masthead{
+  padding:28px 0 18px;
+  border-bottom:2px solid var(--ink);
+  margin-bottom:0;
+}
+header.masthead .title-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+h1{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:2rem;
+  margin:0;
+  color:var(--ink);
+  letter-spacing:-0.01em;
+}
+.tagline{font-family:var(--serif);font-style:italic;color:var(--text-dim);font-size:0.95rem;margin-top:4px;}
+.status-pill{
+  font-size:0.78rem;
+  padding:4px 10px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:var(--paper-raised);
+  color:var(--text-dim);
+}
+.status-pill.ready{border-color:var(--moss);color:var(--moss);background:var(--moss-soft);}
+
+nav.tabs{
+  display:flex;
+  gap:2px;
+  margin:0 0 24px;
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;
+  position:sticky;top:0;background:var(--paper);z-index:10;padding-top:14px;
+}
+nav.tabs button{
+  font-family:var(--sans);
+  font-size:0.88rem;
+  font-weight:500;
+  background:none;
+  border:none;
+  padding:10px 14px;
+  cursor:pointer;
+  color:var(--text-dim);
+  border-bottom:3px solid transparent;
+  white-space:nowrap;
+}
+nav.tabs button.active{color:var(--ink);border-bottom-color:var(--brick);}
+nav.tabs button:hover{color:var(--ink);}
+
+section.panel{display:none;}
+section.panel.active{display:block;}
+
+.card{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px;
+  margin-bottom:18px;
+}
+.card h2{
+  font-family:var(--serif);
+  font-size:1.25rem;
+  margin:0 0 4px;
+  color:var(--ink);
+}
+.card .sub{color:var(--text-dim);font-size:0.88rem;margin-bottom:18px;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:0.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+.field .hint{font-size:0.76rem;color:var(--text-dim);margin-top:4px;}
+input[type=text],input[type=number],input[type=password],textarea,select{
+  width:100%;
+  font-family:var(--sans);
+  font-size:0.92rem;
+  padding:9px 11px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:#fff;
+  color:var(--text);
+}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--ink);outline-offset:1px;}
+textarea{resize:vertical;min-height:70px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media (max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+button.primary{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:0.92rem;
+  background:var(--ink);
+  color:#fff;
+  border:none;
+  padding:11px 20px;
+  border-radius:var(--radius);
+  cursor:pointer;
+}
+button.primary:hover{background:var(--ink-soft);}
+button.primary:disabled{background:#9aa0ab;cursor:not-allowed;}
+button.secondary{
+  font-family:var(--sans);
+  font-weight:500;
+  font-size:0.86rem;
+  background:none;
+  color:var(--ink);
+  border:1px solid var(--line);
+  padding:9px 16px;
+  border-radius:var(--radius);
+  cursor:pointer;
+}
+button.secondary:hover{border-color:var(--ink);}
+
+.upload-zone{
+  border:1.5px dashed var(--line);
+  border-radius:var(--radius);
+  padding:26px;
+  text-align:center;
+  color:var(--text-dim);
+  cursor:pointer;
+  background:#fff;
+}
+.upload-zone.has-file{border-color:var(--moss);color:var(--moss);background:var(--moss-soft);}
+.upload-zone input{display:none;}
+
+.loader{display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:0.88rem;padding:14px 0;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--brick);animation:pulse 1.1s infinite ease-in-out;}
+.dot:nth-child(2){animation-delay:0.15s;}
+.dot:nth-child(3){animation-delay:0.3s;}
+@keyframes pulse{0%,80%,100%{opacity:0.25;}40%{opacity:1;}}
+
+.result{margin-top:16px;}
+.kv-table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+.kv-table td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+.kv-table td:first-child{font-weight:600;color:var(--ink-soft);width:190px;}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.tag{font-size:0.76rem;padding:3px 9px;border-radius:20px;background:var(--paper);border:1px solid var(--line);color:var(--text-dim);}
+
+.check-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+.check-row:last-child{border-bottom:none;}
+.badge{flex-shrink:0;font-size:0.72rem;font-weight:700;padding:3px 8px;border-radius:20px;margin-top:1px;}
+.badge.meets{background:var(--moss-soft);color:var(--moss);}
+.badge.no{background:var(--brick-soft);color:var(--brick);}
+.badge.unclear{background:var(--amber-soft);color:var(--amber);}
+.check-row .body b{display:block;font-size:0.88rem;}
+.check-row .body .note{font-size:0.82rem;color:var(--text-dim);margin-top:2px;}
+
+.verdict{
+  border-radius:var(--radius);
+  padding:16px 18px;
+  margin-bottom:16px;
+  font-family:var(--serif);
+  font-size:1.05rem;
+  font-weight:600;
+}
+.verdict.go{background:var(--moss-soft);color:var(--moss);border:1px solid var(--moss);}
+.verdict.nogo{background:var(--brick-soft);color:var(--brick);border:1px solid var(--brick);}
+.verdict.review{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber);}
+
+.doc-block{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
+.doc-block h3{font-family:var(--serif);font-size:1rem;margin:0 0 10px;color:var(--ink);}
+.doc-block pre{white-space:pre-wrap;font-family:var(--sans);font-size:0.86rem;line-height:1.6;margin:0;color:var(--text);}
+.doc-actions{display:flex;gap:8px;margin-top:10px;}
+
+.empty{color:var(--text-dim);font-size:0.88rem;padding:20px 0;}
+.error-box{background:var(--brick-soft);color:var(--brick);border:1px solid var(--brick);border-radius:var(--radius);padding:12px 14px;font-size:0.86rem;margin-top:12px;}
+.toolbar-end{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="masthead">
+  <div class="title-row">
+    <div>
+      <h1>Tender Desk</h1>
+      <div class="tagline">Bid prep, in one file</div>
+    </div>
+    <span class="status-pill" id="apiStatus">API key not set</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="setup" class="active">Company Profile</button>
+  <button data-tab="summary">Tender Summary</button>
+  <button data-tab="gonogo">Go / No-Go</button>
+  <button data-tab="annexure">Annexure Auto-Fill</button>
+  <button data-tab="response">Response Draft</button>
+</nav>
+
+<!-- SETUP -->
+<section class="panel active" id="panel-setup">
+  <div class="card">
+    <h2>Gemini API key</h2>
+    <div class="sub">Stored only in this browser (localStorage). Get a free key at aistudio.google.com.</div>
+    <div class="field">
+      <input type="password" id="apiKey" placeholder="Paste your Gemini API key">
+    </div>
+    <button class="primary" onclick="saveApiKey()">Save key</button>
+  </div>
+
+  <div class="card">
+    <h2>Company profile</h2>
+    <div class="sub">Used to auto-fill annexures, check eligibility, and draft responses. Saved locally.</div>
+
+    <div class="grid2">
+      <div class="field"><label>Company name</label><input type="text" id="p_name"></div>
+      <div class="field"><label>Authorized signatory (name &amp; designation)</label><input type="text" id="p_signatory"></div>
+    </div>
+    <div class="field"><label>Registered address</label><textarea id="p_address"></textarea></div>
+    <div class="grid3">
+      <div class="field"><label>GSTIN</label><input type="text" id="p_gst"></div>
+      <div class="field"><label>PAN</label><input type="text" id="p_pan"></div>
+      <div class="field"><label>Udyam / MSME reg. no.</label><input type="text" id="p_udyam"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Year of incorporation</label><input type="number" id="p_year"></div>
+      <div class="field"><label>Business category</label>
+        <select id="p_category">
+          <option>Micro Enterprise</option><option>Small Enterprise</option>
+          <option>Medium Enterprise</option><option>Not classified as MSME</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Annual turnover — last 3 financial years (₹)</label>
+      <div class="grid3">
+        <input type="text" id="p_t1" placeholder="FY 2023–24">
+        <input type="text" id="p_t2" placeholder="FY 2024–25">
+        <input type="text" id="p_t3" placeholder="FY 2025–26">
+      </div>
+    </div>
+    <div class="field"><label>OEM authorizations held (list makes/brands)</label><textarea id="p_oem"></textarea></div>
+    <div class="field"><label>Certifications (ISO, BIS, etc.)</label><textarea id="p_certs"></textarea></div>
+    <div class="field"><label>Past performance — major supplies, clients, similar tenders won</label><textarea id="p_experience"></textarea></div>
+    <div class="field"><label>Bank / EMD details (bank name, branch, capacity to furnish BG)</label><textarea id="p_bank"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Contact phone</label><input type="text" id="p_phone"></div>
+      <div class="field"><label>Contact email</label><input type="text" id="p_email"></div>
+    </div>
+    <button class="primary" onclick="saveProfile()">Save profile</button>
+  </div>
+</section>
+
+<!-- SUMMARY -->
+<section class="panel" id="panel-summary">
+  <div class="card">
+    <h2>1. Upload the tender</h2>
+    <div class="sub">One upload feeds all four tools below.</div>
+    <label class="upload-zone" id="uploadZone">
+      <input type="file" id="tenderFile" accept="application/pdf" onchange="handleUpload(event)">
+      <div id="uploadLabel">Tap to upload tender PDF</div>
+    </label>
+  </div>
+  <div class="card">
+    <h2>AI Tender Summary</h2>
+    <div class="sub">Scope of work, eligibility, key dates and values — extracted automatically.</div>
+    <button class="primary" id="btnSummary" onclick="runSummary()" disabled>Generate summary</button>
+    <div id="summaryLoader"></div>
+    <div id="summaryResult" class="result"></div>
+  </div>
+</section>
+
+<!-- GO/NOGO -->
+<section class="panel" id="panel-gonogo">
+  <div class="card">
+    <h2>Go / No-Go Checklist</h2>
+    <div class="sub">Checks each eligibility clause against your saved company profile.</div>
+    <button class="primary" id="btnGoNoGo" onclick="runGoNoGo()" disabled>Run eligibility check</button>
+    <div id="gonogoLoader"></div>
+    <div id="gonogoResult" class="result"></div>
+  </div>
+</section>
+
+<!-- ANNEXURE -->
+<section class="panel" id="panel-annexure">
+  <div class="card">
+    <h2>Annexure Auto-Fill</h2>
+    <div class="sub">Finds annexures/forms in the tender and drafts each one filled with your company data.</div>
+    <button class="primary" id="btnAnnexure" onclick="runAnnexure()" disabled>Generate annexures</button>
+    <div id="annexureLoader"></div>
+    <div id="annexureResult" class="result"></div>
+  </div>
+</section>
+
+<!-- RESPONSE -->
+<section class="panel" id="panel-response">
+  <div class="card">
+    <h2>AI Response Generation</h2>
+    <div class="sub">Full draft bid response matching your profile against the tender's requirements.</div>
+    <button class="primary" id="btnResponse" onclick="runResponse()" disabled>Draft response</button>
+    <div id="responseLoader"></div>
+    <div id="responseResult" class="result"></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+let tenderBase64 = null;
+let tenderFileName = "";
+let cachedSummary = null;
+
+// ---------- tabs ----------
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('section.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- storage ----------
+function getApiKey(){ return localStorage.getItem('td_apikey') || ""; }
+function saveApiKey(){
+  const k = document.getElementById('apiKey').value.trim();
+  if(!k){ return; }
+  localStorage.setItem('td_apikey', k);
+  document.getElementById('apiKey').value = '';
+  refreshStatus();
+}
+function refreshStatus(){
+  const pill = document.getElementById('apiStatus');
+  if(getApiKey()){ pill.textContent = 'API key set'; pill.classList.add('ready'); }
+  else { pill.textContent = 'API key not set'; pill.classList.remove('ready'); }
+}
+const PROFILE_FIELDS = ['name','signatory','address','gst','pan','udyam','year','category','t1','t2','t3','oem','certs','experience','bank','phone','email'];
+function saveProfile(){
+  const profile = {};
+  PROFILE_FIELDS.forEach(f=>{ profile[f] = document.getElementById('p_'+f).value; });
+  localStorage.setItem('td_profile', JSON.stringify(profile));
+  alert('Profile saved.');
+}
+function loadProfile(){
+  const raw = localStorage.getItem('td_profile');
+  if(!raw) return null;
+  const profile = JSON.parse(raw);
+  PROFILE_FIELDS.forEach(f=>{ if(document.getElementById('p_'+f)) document.getElementById('p_'+f).value = profile[f] || ''; });
+  return profile;
+}
+function profileAsText(){
+  const p = JSON.parse(localStorage.getItem('td_profile') || '{}');
+  return `Company: ${p.name||'—'}
+Signatory: ${p.signatory||'—'}
+Address: ${p.address||'—'}
+GSTIN: ${p.gst||'—'} | PAN: ${p.pan||'—'} | Udyam: ${p.udyam||'—'}
+Incorporated: ${p.year||'—'} | Category: ${p.category||'—'}
+Turnover (last 3 FY): ${p.t1||'—'}, ${p.t2||'—'}, ${p.t3||'—'}
+OEM authorizations: ${p.oem||'—'}
+Certifications: ${p.certs||'—'}
+Past performance: ${p.experience||'—'}
+Bank / EMD capacity: ${p.bank||'—'}
+Contact: ${p.phone||'—'} / ${p.email||'—'}`;
+}
+
+// ---------- upload ----------
+function handleUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  tenderFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    tenderBase64 = reader.result.split(',')[1];
+    document.getElementById('uploadLabel').textContent = '✓ ' + file.name;
+    document.getElementById('uploadZone').classList.add('has-file');
+    ['btnSummary','btnGoNoGo','btnAnnexure','btnResponse'].forEach(id=>document.getElementById(id).disabled = false);
+    cachedSummary = null;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---------- Gemini call ----------
+async function callGemini(promptParts, jsonMode){
+  const key = getApiKey();
+  if(!key){ throw new Error('Set your Gemini API key in Company Profile first.'); }
+  const body = {
+    contents: [{ parts: promptParts }],
+    generationConfig: jsonMode ? { responseMimeType: "application/json" } : {}
+  };
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error('Gemini API error: ' + errText.slice(0,300));
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || '';
+  if(!text) throw new Error('Empty response from Gemini.');
+  return text;
+}
+function tenderFilePart(){
+  return { inline_data: { mime_type: 'application/pdf', data: tenderBase64 } };
+}
+function setLoading(id, on, msg){
+  document.getElementById(id).innerHTML = on ? `<div class="loader"><span class="dot"></span><span class="dot"></span><span class="dot"></span>${msg||'Working…'}</div>` : '';
+}
+function showError(resultId, err){
+  document.getElementById(resultId).innerHTML = `<div class="error-box">${err.message || err}</div>`;
+}
+function safeJson(text){
+  const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+  return JSON.parse(cleaned);
+}
+
+// ---------- 1. Summary ----------
+async function runSummary(){
+  if(!tenderBase64) return;
+  setLoading('summaryLoader', true, 'Reading tender document…');
+  document.getElementById('summaryResult').innerHTML = '';
+  try{
+    const prompt = `You are analysing a government tender document for a kitchen equipment supply company. Extract the following as JSON only, no markdown fences:
+{
+ "tenderNo": "", "issuingAuthority": "", "tenderTitle": "",
+ "tenderValue": "", "emdAmount": "", "submissionDeadline": "", "bidOpeningDate": "",
+ "scopeOfWork": ["bullet points"],
+ "eligibilityCriteria": ["bullet points, one clause per item"],
+ "documentsRequired": ["bullet points"]
+}
+If a field is not found, use "Not specified".`;
+    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const j = safeJson(text);
+    cachedSummary = j;
+    renderSummary(j);
+  }catch(err){ showError('summaryResult', err); }
+  setLoading('summaryLoader', false);
+}
+function renderSummary(j){
+  let html = `<table class="kv-table">
+    <tr><td>Tender No.</td><td>${j.tenderNo}</td></tr>
+    <tr><td>Issuing Authority</td><td>${j.issuingAuthority}</td></tr>
+    <tr><td>Title</td><td>${j.tenderTitle}</td></tr>
+    <tr><td>Tender Value</td><td>${j.tenderValue}</td></tr>
+    <tr><td>EMD Amount</td><td>${j.emdAmount}</td></tr>
+    <tr><td>Submission Deadline</td><td>${j.submissionDeadline}</td></tr>
+    <tr><td>Bid Opening</td><td>${j.bidOpeningDate}</td></tr>
+  </table>`;
+  html += `<h3 style="font-family:var(--serif);font-size:1rem;margin:16px 0 6px;">Scope of work</h3><div class="pill-row">${(j.scopeOfWork||[]).map(s=>`<span class="tag">${s}</span>`).join('')}</div>`;
+  html += `<h3 style="font-family:var(--serif);font-size:1rem;margin:16px 0 6px;">Eligibility criteria</h3><div class="pill-row">${(j.eligibilityCriteria||[]).map(s=>`<span class="tag">${s}</span>`).join('')}</div>`;
+  html += `<h3 style="font-family:var(--serif);font-size:1rem;margin:16px 0 6px;">Documents required</h3><div class="pill-row">${(j.documentsRequired||[]).map(s=>`<span class="tag">${s}</span>`).join('')}</div>`;
+  document.getElementById('summaryResult').innerHTML = html;
+}
+
+// ---------- 2. Go/No-Go ----------
+async function runGoNoGo(){
+  if(!tenderBase64) return;
+  setLoading('gonogoLoader', true, 'Checking eligibility against your profile…');
+  document.getElementById('gonogoResult').innerHTML = '';
+  try{
+    const prompt = `You are a bid-eligibility reviewer for a kitchen equipment supply company applying to a government tender.
+Company profile:
+${profileAsText()}
+
+Read the attached tender document. For each eligibility criterion in it, decide whether the company meets it based on the profile above. Respond as JSON only, no markdown fences:
+{
+ "checks": [{"criterion":"", "required":"", "companyStanding":"", "status":"meets|no|unclear", "note":""}],
+ "overall": "go|nogo|review",
+ "overallReason": "2-3 sentence summary"
+}
+Use "unclear" only when the profile genuinely lacks the information needed to judge.`;
+    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const j = safeJson(text);
+    renderGoNoGo(j);
+  }catch(err){ showError('gonogoResult', err); }
+  setLoading('gonogoLoader', false);
+}
+function renderGoNoGo(j){
+  const verdictClass = j.overall === 'go' ? 'go' : (j.overall === 'nogo' ? 'nogo' : 'review');
+  const verdictLabel = j.overall === 'go' ? 'GO — proceed with bid preparation' : (j.overall === 'nogo' ? 'NO-GO — does not meet requirements' : 'REVIEW — manual check needed');
+  let html = `<div class="verdict ${verdictClass}">${verdictLabel}</div><p style="color:var(--text-dim);font-size:0.88rem;margin-top:-8px;">${j.overallReason||''}</p>`;
+  html += (j.checks||[]).map(c=>{
+    const badgeClass = c.status === 'meets' ? 'meets' : (c.status === 'no' ? 'no' : 'unclear');
+    const badgeLabel = c.status === 'meets' ? 'MEETS' : (c.status === 'no' ? 'GAP' : 'CHECK');
+    return `<div class="check-row"><span class="badge ${badgeClass}">${badgeLabel}</span><div class="body"><b>${c.criterion}</b><div class="note">Required: ${c.required} — Company: ${c.companyStanding}${c.note ? ' — '+c.note : ''}</div></div></div>`;
+  }).join('');
+  document.getElementById('gonogoResult').innerHTML = html;
+}
+
+// ---------- 3. Annexure Auto-Fill ----------
+async function runAnnexure(){
+  if(!tenderBase64) return;
+  setLoading('annexureLoader', true, 'Extracting annexures and filling from your profile…');
+  document.getElementById('annexureResult').innerHTML = '';
+  try{
+    const prompt = `You are preparing bid annexures for a kitchen equipment supply company. Company profile:
+${profileAsText()}
+
+Read the attached tender document, find every annexure/form/undertaking it asks bidders to submit (e.g. Technical Compliance, OEM Authorization, Non-Blacklisting Undertaking, Financial Standing, Acceptance of T&C, Address Proof, etc.). For each one, draft the completed text using the company profile data, following the format/fields the tender specifies as closely as possible. Respond as JSON only, no markdown fences:
+{ "annexures": [{"title":"", "filledText":"full drafted text of the annexure, ready to place on letterhead"}] }`;
+    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const j = safeJson(text);
+    renderAnnexure(j);
+  }catch(err){ showError('annexureResult', err); }
+  setLoading('annexureLoader', false);
+}
+function renderAnnexure(j){
+  const list = j.annexures || [];
+  if(list.length === 0){ document.getElementById('annexureResult').innerHTML = '<div class="empty">No annexures detected.</div>'; return; }
+  let html = list.map((a,i)=>`
+    <div class="doc-block">
+      <h3>${a.title}</h3>
+      <pre id="ann_${i}">${a.filledText}</pre>
+      <div class="doc-actions">
+        <button class="secondary" onclick="copyBlock('ann_${i}')">Copy</button>
+        <button class="secondary" onclick="downloadBlock('ann_${i}','${(a.title||'annexure').replace(/[^a-z0-9]/gi,'_')}')">Download .txt</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('annexureResult').innerHTML = html;
+}
+
+// ---------- 4. Response Generation ----------
+async function runResponse(){
+  if(!tenderBase64) return;
+  setLoading('responseLoader', true, 'Drafting the bid response…');
+  document.getElementById('responseResult').innerHTML = '';
+  try{
+    const prompt = `You are drafting a complete bid response for a kitchen equipment supply company. Company profile:
+${profileAsText()}
+
+Read the attached tender document. Write a complete, submission-ready bid response covering: covering letter, company introduction matched to the scope of work, point-by-point technical compliance against the eligibility/technical requirements, relevant past performance, and a closing statement of commitment to delivery terms. Write it in formal Indian government-tender bid language. Respond as JSON only, no markdown fences:
+{ "response": "full response text" }`;
+    const text = await callGemini([{text:prompt}, tenderFilePart()], true);
+    const j = safeJson(text);
+    document.getElementById('responseResult').innerHTML = `
+      <div class="doc-block"><pre id="resp_0">${j.response}</pre>
+      <div class="doc-actions">
+        <button class="secondary" onclick="copyBlock('resp_0')">Copy</button>
+        <button class="secondary" onclick="downloadBlock('resp_0','bid_response')">Download .txt</button>
+      </div></div>`;
+  }catch(err){ showError('responseResult', err); }
+  setLoading('responseLoader', false);
+}
+
+// ---------- utils ----------
+function copyBlock(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+}
+function downloadBlock(id, name){
+  const blob = new Blob([document.getElementById(id).textContent], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.txt';
+  a.click();
+}
+
+// ---------- init ----------
+loadProfile();
+refreshStatus();
+</script>
+</body>
+</html>
