@@ -710,7 +710,7 @@ function validateLicenseCode(code){
   if(computeChecksum(custId, yyyymm) !== checksum) return {ok:false, reason:'Code is not valid.'};
   const year = parseInt(yyyymm.slice(0,4),10), month = parseInt(yyyymm.slice(4,6),10);
   const expiry = new Date(year, month, 0, 23,59,59); // last day of that month
-  if(new Date() > expiry) return {ok:false, reason:'This code has expired. Ask for this month\\'s code.'};
+  if(new Date() > expiry) return {ok:false, reason:'This code has expired. Please ask for a new code for this month.'};
   return {ok:true};
 }
 function activateLicense(){
