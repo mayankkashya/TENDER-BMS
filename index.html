@@ -148,6 +148,7 @@ button.secondary{
 button.secondary:hover{border-color:var(--ink);}
 
 .upload-zone{
+  display:block;
   border:1.5px dashed var(--line);
   border-radius:var(--radius);
   padding:26px;
@@ -233,6 +234,20 @@ button.secondary:hover{border-color:var(--ink);}
       <input type="password" id="apiKey" placeholder="Paste your Gemini API key">
     </div>
     <button class="primary" onclick="saveApiKey()">Save key</button>
+  </div>
+
+  <div class="card">
+    <h2>Auto-fill from documents</h2>
+    <div class="sub">Upload GST certificate, MSME/Udyam certificate, PAN, a past bid document — anything with your company details. Gemini fills the form below; review and save.</div>
+    <label class="upload-zone" id="profDocsZone">
+      <input type="file" id="profDocs" accept="application/pdf" multiple onchange="handleProfileDocs(event)">
+      <div id="profDocsLabel">Tap to upload one or more PDFs</div>
+    </label>
+    <div class="toolbar-end">
+      <button class="primary" id="btnProfileFill" onclick="runProfileAutofill()" disabled>Extract &amp; fill profile</button>
+    </div>
+    <div id="profileFillLoader"></div>
+    <div id="profileFillResult" class="result"></div>
   </div>
 
   <div class="card">
@@ -388,6 +403,47 @@ Certifications: ${p.certs||'—'}
 Past performance: ${p.experience||'—'}
 Bank / EMD capacity: ${p.bank||'—'}
 Contact: ${p.phone||'—'} / ${p.email||'—'}`;
+}
+
+// ---------- profile doc autofill ----------
+let profileDocsBase64 = [];
+function handleProfileDocs(e){
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  profileDocsBase64 = [];
+  let loaded = 0;
+  document.getElementById('profDocsLabel').textContent = 'Reading ' + files.length + ' file(s)…';
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      profileDocsBase64.push(reader.result.split(',')[1]);
+      loaded++;
+      if(loaded === files.length){
+        document.getElementById('profDocsLabel').textContent = '✓ ' + files.length + ' file(s) ready';
+        document.getElementById('profDocsZone').classList.add('has-file');
+        document.getElementById('btnProfileFill').disabled = false;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function runProfileAutofill(){
+  if(!profileDocsBase64.length) return;
+  setLoading('profileFillLoader', true, 'Extracting company details…');
+  document.getElementById('profileFillResult').innerHTML = '';
+  try{
+    const prompt = `Extract this company's details from the attached document(s) for a government tender bid profile. Respond as JSON only, no markdown fences, using exactly these keys (use "" if not found):
+{"name":"","signatory":"","address":"","gst":"","pan":"","udyam":"","year":"","category":"one of Micro Enterprise|Small Enterprise|Medium Enterprise|Not classified as MSME","t1":"","t2":"","t3":"","oem":"","certs":"","experience":"","bank":"","phone":"","email":""}
+t1/t2/t3 are annual turnover for the three most recent financial years found, oldest to newest, as plain text with the amount and year e.g. "FY 2023-24: Rs 45 lakh". oem is OEM authorizations/brands if mentioned. certs is certifications like ISO/BIS. experience is any past performance/project mentions found. Leave a field "" rather than guessing.`;
+    const parts = [{text:prompt}, ...profileDocsBase64.map(b64=>({inline_data:{mime_type:'application/pdf', data:b64}}))];
+    const text = await callGemini(parts, true);
+    const j = safeJson(text);
+    PROFILE_FIELDS.forEach(f=>{
+      if(j[f] && document.getElementById('p_'+f)) document.getElementById('p_'+f).value = j[f];
+    });
+    document.getElementById('profileFillResult').innerHTML = '<div class="verdict go" style="font-size:0.9rem;">Form filled below — check the fields, then click "Save profile".</div>';
+  }catch(err){ showError('profileFillResult', err); }
+  setLoading('profileFillLoader', false);
 }
 
 // ---------- upload ----------
